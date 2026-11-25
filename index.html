@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>全能圖片與 GIF 編輯處理工具 | Image & GIF Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #0b0f19;
+      color: #f1f5f9;
+      user-select: none;
+    }
+    .checkerboard {
+      background-color: #161d2f;
+      background-image:
+        linear-gradient(45deg, #222c44 25%, transparent 25%),
+        linear-gradient(-45deg, #222c44 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #222c44 75%),
+        linear-gradient(-45deg, transparent 75%, #222c44 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    input[type="range"] {
+      accent-color: #6366f1;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+  <!-- Top Navbar -->
+  <header class="h-14 bg-slate-900/90 border-b border-slate-800 px-5 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-wide text-slate-100">全能圖片 &amp; GIF 處理工作室</h1>
+        <p class="text-[11px] text-slate-400">100% 瀏覽器本地端運算 • 隱私安全零上傳</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div id="fileInfoBadge" class="hidden items-center gap-2 bg-slate-800/80 border border-slate-700 px-3 py-1 rounded-full text-xs text-slate-300">
+        <span id="badgeFormat" class="font-semibold text-indigo-400 uppercase">PNG</span>
+        <span class="text-slate-600">|</span>
+        <span id="badgeDim">0 × 0</span>
+        <span class="text-slate-600">|</span>
+        <span id="badgeSize">0 KB</span>
+      </div>
+
+      <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+        載入新檔案
+        <input type="file" id="topFileInput" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/svg+xml" class="hidden" />
+      </label>
+
+      <button id="exportBtn" disabled class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-lg text-xs font-semibold shadow-lg shadow-indigo-600/25 transition flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span id="exportBtnText">匯出下載</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- Center Canvas Area -->
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+      <!-- Dropzone Overlay (Initial State) -->
+      <div id="dropzone" class="flex-1 m-6 rounded-2xl border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-900/40 hover:bg-slate-900/70 transition flex flex-col items-center justify-center cursor-pointer group">
+        <div class="w-16 h-16 rounded-2xl bg-slate-800 group-hover:bg-indigo-500/20 border border-slate-700 group-hover:border-indigo-500/50 flex items-center justify-center mb-4 transition">
+          <svg class="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+        </div>
+        <h2 class="text-base font-semibold text-slate-200 mb-1">拖曳圖片或 GIF 到此處，或點擊選擇檔案</h2>
+        <p class="text-xs text-slate-400">支援 PNG、JPG、WebP、BMP、SVG 與 GIF 動態圖</p>
+        <input type="file" id="mainFileInput" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/svg+xml" class="hidden" />
+      </div>
+
+      <!-- Canvas Viewport (Active State) -->
+      <div id="editorViewport" class="hidden flex-1 flex flex-col overflow-hidden">
+        <!-- Canvas Toolbar -->
+        <div class="h-10 bg-slate-900/60 border-b border-slate-800/80 px-4 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span id="modeBadge" class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-medium border border-indigo-500/30">靜態圖片模式</span>
+            <span id="interactionHint" class="text-slate-400">提示：使用右側面板調整參數，或點擊畫布進行智慧去背</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="toggleCompareBtn" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">按住對比原圖</button>
+            <button id="resetAllBtn" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-300 border border-slate-700 transition">重設全部</button>
+          </div>
+        </div>
+
+        <!-- Preview Stage -->
+        <div id="canvasContainer" class="flex-1 overflow-auto flex items-center justify-center p-6 relative">
+          <div class="checkerboard rounded-lg shadow-2xl border border-slate-700/80 overflow-hidden relative inline-flex items-center justify-center">
+            <canvas id="previewCanvas" class="max-w-full max-h-[68vh] object-contain block cursor-crosshair"></canvas>
+          </div>
+        </div>
+
+        <!-- GIF Timeline Bar (Only visible in GIF mode) -->
+        <div id="gifTimelinePanel" class="hidden h-32 bg-slate-900 border-t border-slate-800 px-4 py-2.5 flex flex-col shrink-0">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <button id="gifPlayPauseBtn" class="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium flex items-center gap-1">
+                <span id="gifPlayIcon">⏸</span> <span id="gifPlayText">暫停</span>
+              </button>
+              <span class="text-xs text-slate-400">總幀數：<strong id="gifFrameCount" class="text-slate-200">0</strong> 幀 | 已啟用：<strong id="gifActiveFrameCount" class="text-indigo-400">0</strong> 幀</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="gifDropHalfBtn" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition">一鍵抽半幀 (瘦身)</button>
+              <button id="gifSelectAllFramesBtn" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition">全選所有幀</button>
+            </div>
+          </div>
+          <div id="gifFramesStrip" class="flex-1 flex items-center gap-2 overflow-x-auto pb-1"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Inspector Sidebar -->
+    <aside id="inspectorSidebar" class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col overflow-y-auto shrink-0 opacity-50 pointer-events-none transition-opacity">
+
+      <!-- Section 1: Dimensions & Pixelation -->
+      <div class="p-4 border-b border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">1. 大小調整 &amp; 像素化</h3>
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
+            <input type="checkbox" id="lockAspectCheckbox" checked class="rounded border-slate-600 bg-slate-800 text-indigo-500" />
+            鎖定比例
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">寬度 (px)</label>
+            <input type="number" id="widthInput" min="1" max="4096" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">高度 (px)</label>
+            <input type="number" id="heightInput" min="1" max="4096" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-1.5">
+          <button data-scale="0.25" class="scale-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-1 text-[11px] text-slate-300">25%</button>
+          <button data-scale="0.5" class="scale-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-1 text-[11px] text-slate-300">50%</button>
+          <button data-scale="0.75" class="scale-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-1 text-[11px] text-slate-300">75%</button>
+          <button data-scale="1" class="scale-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-1 text-[11px] text-slate-300">100%</button>
+        </div>
+
+        <div class="pt-1">
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-400">像素風格顆粒大小 (Pixelate)</span>
+            <span id="pixelSizeVal" class="text-indigo-400 font-semibold">1 px (原畫質)</span>
+          </div>
+          <input type="range" id="pixelSizeRange" min="1" max="48" value="1" class="w-full" />
+        </div>
+      </div>
+
+      <!-- Section 2: GIF Controls (Only in GIF mode) -->
+      <div id="gifControlSection" class="hidden p-4 border-b border-slate-800 space-y-3 bg-indigo-950/10">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-300">2. GIF 速度與播放控制</h3>
+
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-400">播放速度倍率</span>
+            <span id="gifSpeedVal" class="text-indigo-400 font-semibold">1.0x</span>
+          </div>
+          <input type="range" id="gifSpeedRange" min="0.25" max="4" step="0.25" value="1" class="w-full" />
+          <div class="grid grid-cols-5 gap-1 mt-1.5">
+            <button data-speed="0.5" class="speed-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-0.5 text-[11px]">0.5x</button>
+            <button data-speed="1" class="speed-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-0.5 text-[11px]">1x</button>
+            <button data-speed="1.5" class="speed-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-0.5 text-[11px]">1.5x</button>
+            <button data-speed="2" class="speed-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-0.5 text-[11px]">2x</button>
+            <button data-speed="3" class="speed-preset-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded py-0.5 text-[11px]">3x</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">播放順序模式</label>
+          <select id="gifDirectionSelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none">
+            <option value="normal">正常順放 (Normal)</option>
+            <option value="reverse">倒轉播放 (Reverse)</option>
+            <option value="pingpong">來回循環 (Ping-Pong)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Section 3: Background Removal -->
+      <div class="p-4 border-b border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">智慧去背 (Background Removal)</h3>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="bgRemoveEnable" class="sr-only peer" />
+            <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+
+        <div id="bgRemoveControls" class="space-y-3 opacity-50 pointer-events-none transition-opacity">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <input type="color" id="bgTargetColor" value="#ffffff" class="w-7 h-7 rounded cursor-pointer bg-transparent border-0" />
+              <div>
+                <div class="text-xs text-slate-200 font-medium">目標背景色</div>
+                <div id="bgTargetHex" class="text-[11px] text-slate-400 font-mono">#FFFFFF</div>
+              </div>
+            </div>
+            <button id="autoDetectCornerBtn" class="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-indigo-300 transition">自動偵測四角</button>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">去背演算法</label>
+            <select id="bgModeSelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+              <option value="flood">邊界連通去背 (保護主體內部同色)</option>
+              <option value="global">全域色彩替換 (清除全圖相近色)</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-400">色彩容差 (Tolerance)</span>
+              <span id="bgToleranceVal" class="text-indigo-400 font-semibold">25</span>
+            </div>
+            <input type="range" id="bgToleranceRange" min="1" max="150" value="25" class="w-full" />
+          </div>
+
+          <p class="text-[11px] text-slate-400 bg-slate-800/70 p-2 rounded border border-slate-700/70">
+            💡 啟用去背後，直接點擊左側畫布上的任意背景位置即可吸取該點顏色並執行去背。
+          </p>
+        </div>
+      </div>
+
+      <!-- Section 4: Format Conversion & Compression -->
+      <div class="p-4 space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">格式轉換 &amp; 檔案壓縮</h3>
+
+        <div id="staticFormatBox">
+          <label class="block text-xs text-slate-400 mb-1">輸出檔案格式</label>
+          <select id="outputFormatSelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+            <option value="image/png">PNG (支援透明背景)</option>
+            <option value="image/jpeg">JPG / JPEG (體積小、不支援透明)</option>
+            <option value="image/webp">WebP (現代高壓縮比、支援透明)</option>
+            <option value="image/bmp">BMP (無壓縮點陣圖)</option>
+            <option value="image/x-icon">ICO (網站/軟體圖示檔)</option>
+          </select>
+        </div>
+
+        <div id="qualitySliderBox">
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-400">壓縮畫質 (Quality)</span>
+            <span id="qualityVal" class="text-indigo-400 font-semibold">85%</span>
+          </div>
+          <input type="range" id="qualityRange" min="10" max="100" value="85" class="w-full" />
+        </div>
+
+        <div id="paletteBox" class="hidden">
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-400">GIF 調色盤色彩數 (越小檔案越輕)</span>
+            <span id="gifColorsVal" class="text-indigo-400 font-semibold">128 色</span>
+          </div>
+          <select id="gifColorsSelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+            <option value="256">256 色 (最高畫質)</option>
+            <option value="128" selected>128 色 (均衡壓縮)</option>
+            <option value="64">64 色 (輕量壓縮)</option>
+            <option value="32">32 色 (極致瘦身)</option>
+            <option value="16">16 色 (復古低色深)</option>
+          </select>
+        </div>
+
+        <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-3 flex items-center justify-between">
+          <span class="text-xs text-slate-400">預估輸出大小</span>
+          <span id="estimatedSizeText" class="text-xs font-bold text-emerald-400">計算中...</span>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- Processing Modal -->
+  <div id="loadingModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-xs w-full text-center shadow-2xl">
+      <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <h4 id="loadingTitle" class="text-sm font-bold text-slate-100 mb-1">正在處理中...</h4>
+      <p id="loadingDesc" class="text-xs text-slate-400">請稍候，正在本機編碼您的檔案</p>
+    </div>
+  </div>
+
+  <script>
+    // Application State
+    const state = {
+      isGif: false,
+      fileName: 'edited-image',
+      originalSize: 0,
+      origWidth: 0,
+      origHeight: 0,
+      targetWidth: 0,
+      targetHeight: 0,
+      lockAspect: true,
+      pixelSize: 1,
+      bgRemove: false,
+      bgColor: { r: 255, g: 255, b: 255 },
+      bgMode: 'flood',
+      bgTolerance: 25,
+      outputFormat: 'image/png',
+      quality: 0.85,
+      // Static image source
+      staticImage: null,
+      // GIF frames: [{ imageData, delay, enabled }]
+      gifFrames: [],
+      gifSpeed: 1.0,
+      gifDirection: 'normal',
+      gifColors: 128,
+      gifPlaying: true,
+      gifCurrentIdx: 0,
+      gifTimer: null,
+      showOriginal: false
+    };
+
+    // DOM Elements
+    const el = {
+      dropzone: document.getElementById('dropzone'),
+      editorViewport: document.getElementById('editorViewport'),
+      inspectorSidebar: document.getElementById('inspectorSidebar'),
+      mainFileInput: document.getElementById('mainFileInput'),
+      topFileInput: document.getElementById('topFileInput'),
+      previewCanvas: document.getElementById('previewCanvas'),
+      exportBtn: document.getElementById('exportBtn'),
+      exportBtnText: document.getElementById('exportBtnText'),
+      fileInfoBadge: document.getElementById('fileInfoBadge'),
+      badgeFormat: document.getElementById('badgeFormat'),
+      badgeDim: document.getElementById('badgeDim'),
+      badgeSize: document.getElementById('badgeSize'),
+      modeBadge: document.getElementById('modeBadge'),
+      widthInput: document.getElementById('widthInput'),
+      heightInput: document.getElementById('heightInput'),
+      lockAspectCheckbox: document.getElementById('lockAspectCheckbox'),
+      pixelSizeRange: document.getElementById('pixelSizeRange'),
+      pixelSizeVal: document.getElementById('pixelSizeVal'),
+      gifControlSection: document.getElementById('gifControlSection'),
+      gifTimelinePanel: document.getElementById('gifTimelinePanel'),
+      gifFramesStrip: document.getElementById('gifFramesStrip'),
+      gifSpeedRange: document.getElementById('gifSpeedRange'),
+      gifSpeedVal: document.getElementById('gifSpeedVal'),
+      gifDirectionSelect: document.getElementById('gifDirectionSelect'),
+      gifPlayPauseBtn: document.getElementById('gifPlayPauseBtn'),
+      gifPlayIcon: document.getElementById('gifPlayIcon'),
+      gifPlayText: document.getElementById('gifPlayText'),
+      gifFrameCount: document.getElementById('gifFrameCount'),
+      gifActiveFrameCount: document.getElementById('gifActiveFrameCount'),
+      bgRemoveEnable: document.getElementById('bgRemoveEnable'),
+      bgRemoveControls: document.getElementById('bgRemoveControls'),
+      bgTargetColor: document.getElementById('bgTargetColor'),
+      bgTargetHex: document.getElementById('bgTargetHex'),
+      bgModeSelect: document.getElementById('bgModeSelect'),
+      bgToleranceRange: document.getElementById('bgToleranceRange'),
+      bgToleranceVal: document.getElementById('bgToleranceVal'),
+      outputFormatSelect: document.getElementById('outputFormatSelect'),
+      qualityRange: document.getElementById('qualityRange'),
+      qualityVal: document.getElementById('qualityVal'),
+      staticFormatBox: document.getElementById('staticFormatBox'),
+      qualitySliderBox: document.getElementById('qualitySliderBox'),
+      paletteBox: document.getElementById('paletteBox'),
+      gifColorsSelect: document.getElementById('gifColorsSelect'),
+      gifColorsVal: document.getElementById('gifColorsVal'),
+      estimatedSizeText: document.getElementById('estimatedSizeText'),
+      loadingModal: document.getElementById('loadingModal'),
+      loadingTitle: document.getElementById('loadingTitle'),
+      loadingDesc: document.getElementById('loadingDesc')
+    };
+
+    const ctx = el.previewCanvas.getContext('2d', { willReadFrequently: true });
+
+    // Utilities
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function hexToRgb(hex) {
+      const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return res ? {
+        r: parseInt(res[1], 16),
+        g: parseInt(res[2], 16),
+        b: parseInt(res[3], 16)
+      } : { r: 255, g: 255, b: 255 };
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    // File Loading Handlers
+    el.dropzone.addEventListener('click', () => el.mainFileInput.click());
+    el.dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      el.dropzone.classList.add('border-indigo-500', 'bg-slate-900/80');
+    });
+    el.dropzone.addEventListener('dragleave', () => {
+      el.dropzone.classList.remove('border-indigo-500', 'bg-slate-900/80');
+    });
+    el.dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.dropzone.classList.remove('border-indigo-500', 'bg-slate-900/80');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+    el.mainFileInput.addEventListener('change', (e) => e.target.files[0] && handleFile(e.target.files[0]));
+    el.topFileInput.addEventListener('change', (e) => e.target.files[0] && handleFile(e.target.files[0]));
+
+    async function handleFile(file) {
+      stopGifPlayback();
+      state.originalSize = file.size;
+      state.fileName = file.name.replace(/\.[^/.]+$/, "");
+      state.pixelSize = 1;
+      el.pixelSizeRange.value = 1;
+      el.pixelSizeVal.textContent = '1 px (原畫質)';
+      state.bgRemove = false;
+      el.bgRemoveEnable.checked = false;
+      el.bgRemoveControls.classList.add('opacity-50', 'pointer-events-none');
+
+      const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+      state.isGif = isGif;
+
+      if (isGif) {
+        await loadGifFile(file);
+      } else {
+        await loadStaticImageFile(file);
+      }
+
+      // Activate UI
+      el.dropzone.classList.add('hidden');
+      el.editorViewport.classList.remove('hidden');
+      el.inspectorSidebar.classList.remove('opacity-50', 'pointer-events-none');
+      el.exportBtn.disabled = false;
+      el.fileInfoBadge.classList.remove('hidden');
+      el.fileInfoBadge.classList.add('flex');
+
+      el.badgeFormat.textContent = isGif ? 'GIF' : file.type.split('/')[1] || 'IMG';
+      el.badgeDim.textContent = `${state.origWidth} × ${state.origHeight}`;
+      el.badgeSize.textContent = formatBytes(state.originalSize);
+      el.widthInput.value = state.targetWidth;
+      el.heightInput.value = state.targetHeight;
+
+      autoDetectCornerColor();
+      if (state.isGif) {
+        startGifPlayback();
+      } else {
+        renderStaticPreview();
+      }
+    }
+
+    function loadStaticImageFile(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            state.staticImage = img;
+            state.origWidth = img.width;
+            state.origHeight = img.height;
+            state.targetWidth = img.width;
+            state.targetHeight = img.height;
+
+            el.modeBadge.textContent = '靜態圖片模式';
+            el.gifControlSection.classList.add('hidden');
+            el.gifTimelinePanel.classList.add('hidden');
+            el.staticFormatBox.classList.remove('hidden');
+            el.qualitySliderBox.classList.remove('hidden');
+            el.paletteBox.classList.add('hidden');
+            el.exportBtnText.textContent = '匯出圖片';
+            resolve();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function loadGifFile(file) {
+      const buffer = await file.arrayBuffer();
+      const uint8 = new Uint8Array(buffer);
+      const reader = new GifReader(uint8);
+
+      state.origWidth = reader.width;
+      state.origHeight = reader.height;
+      state.targetWidth = reader.width;
+      state.targetHeight = reader.height;
+      state.gifFrames = [];
+      state.gifSpeed = 1.0;
+      state.gifDirection = 'normal';
+      el.gifSpeedRange.value = 1;
+      el.gifSpeedVal.textContent = '1.0x';
+      el.gifDirectionSelect.value = 'normal';
+
+      const compCanvas = document.createElement('canvas');
+      compCanvas.width = reader.width;
+      compCanvas.height = reader.height;
+      const compCtx = compCanvas.getContext('2d');
+
+      const frameCanvas = document.createElement('canvas');
+      frameCanvas.width = reader.width;
+      frameCanvas.height = reader.height;
+      const frameCtx = frameCanvas.getContext('2d');
+
+      const numFrames = reader.numFrames();
+      for (let i = 0; i < numFrames; i++) {
+        const info = reader.frameInfo(i);
+        const prevState = info.disposal === 3 ? compCtx.getImageData(0, 0, reader.width, reader.height) : null;
+
+        const rgba = new Uint8ClampedArray(reader.width * reader.height * 4);
+        reader.decodeAndBlitFrameRGBA(i, rgba);
+        const patch = new ImageData(rgba, reader.width, reader.height);
+        frameCtx.putImageData(patch, 0, 0);
+
+        compCtx.drawImage(frameCanvas, 0, 0);
+        const fullFrame = compCtx.getImageData(0, 0, reader.width, reader.height);
+
+        state.gifFrames.push({
+          imageData: fullFrame,
+          delay: Math.max(20, (info.delay || 10) * 10),
+          enabled: true
+        });
+
+        if (info.disposal === 2) {
+          compCtx.clearRect(info.x, info.y, info.width, info.height);
+        } else if (info.disposal === 3 && prevState) {
+          compCtx.putImageData(prevState, 0, 0);
+        }
+      }
+
+      el.modeBadge.textContent = 'GIF 動態圖模式';
+      el.gifControlSection.classList.remove('hidden');
+      el.gifTimelinePanel.classList.remove('hidden');
+      el.staticFormatBox.classList.add('hidden');
+      el.qualitySliderBox.classList.add('hidden');
+      el.paletteBox.classList.remove('hidden');
+      el.exportBtnText.textContent = '匯出 GIF';
+
+      buildGifTimelineUI();
+      updateEstimatedSize();
+    }
+
+    function buildGifTimelineUI() {
+      el.gifFramesStrip.innerHTML = '';
+      el.gifFrameCount.textContent = state.gifFrames.length;
+      const activeCount = state.gifFrames.filter(f => f.enabled).length;
+      el.gifActiveFrameCount.textContent = activeCount;
+
+      const thumbCanvas = document.createElement('canvas');
+      thumbCanvas.width = state.origWidth;
+      thumbCanvas.height = state.origHeight;
+      const tCtx = thumbCanvas.getContext('2d');
+
+      state.gifFrames.forEach((frame, idx) => {
+        tCtx.putImageData(frame.imageData, 0, 0);
+        const item = document.createElement('div');
+        item.className = `relative shrink-0 w-16 h-16 rounded-lg border-2 overflow-hidden cursor-pointer transition ${frame.enabled ? 'border-indigo-500 opacity-100' : 'border-slate-700 opacity-35 grayscale'}`;
+        item.title = `第 ${idx + 1} 幀 (點擊切換啟用/停用)`;
+
+        const img = document.createElement('img');
+        img.src = thumbCanvas.toDataURL();
+        img.className = 'w-full h-full object-contain checkerboard';
+
+        const badge = document.createElement('span');
+        badge.className = 'absolute bottom-0.5 right-1 text-[10px] font-bold bg-slate-950/80 px-1 rounded text-slate-200';
+        badge.textContent = `#${idx + 1}`;
+
+        item.appendChild(img);
+        item.appendChild(badge);
+        item.addEventListener('click', () => {
+          const enabledCount = state.gifFrames.filter(f => f.enabled).length;
+          if (frame.enabled && enabledCount <= 1) return; // keep at least 1 frame
+          frame.enabled = !frame.enabled;
+          buildGifTimelineUI();
+          updateEstimatedSize();
+        });
+        el.gifFramesStrip.appendChild(item);
+      });
+    }
+
+    // Core Frame Processing Pipeline (Resize -> Pixelate -> Bg Removal)
+    function processSourceToCanvas(sourceDrawable, isImageData = false) {
+      const w = Math.max(1, state.targetWidth);
+      const h = Math.max(1, state.targetHeight);
+
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const outCtx = outCanvas.getContext('2d', { willReadFrequently: true });
+
+      // Prepare source canvas if ImageData
+      let srcCanvas = sourceDrawable;
+      if (isImageData) {
+        srcCanvas = document.createElement('canvas');
+        srcCanvas.width = sourceDrawable.width;
+        srcCanvas.height = sourceDrawable.height;
+        srcCanvas.getContext('2d').putImageData(sourceDrawable, 0, 0);
+      }
+
+      if (state.showOriginal) {
+        outCanvas.width = state.origWidth;
+        outCanvas.height = state.origHeight;
+        outCtx.drawImage(srcCanvas, 0, 0);
+        return outCanvas;
+      }
+
+      // Step 1 & 2: Resize + Pixelation
+      const pSize = state.pixelSize;
+      if (pSize > 1) {
+        const sw = Math.max(1, Math.floor(w / pSize));
+        const sh = Math.max(1, Math.floor(h / pSize));
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = sw;
+        tempCanvas.height = sh;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(srcCanvas, 0, 0, sw, sh);
+
+        outCtx.imageSmoothingEnabled = false;
+        outCtx.drawImage(tempCanvas, 0, 0, sw, sh, 0, 0, w, h);
+      } else {
+        outCtx.imageSmoothingEnabled = true;
+        outCtx.imageSmoothingQuality = 'high';
+        outCtx.drawImage(srcCanvas, 0, 0, w, h);
+      }
+
+      // Step 3: Background Removal
+      if (state.bgRemove) {
+        const imgData = outCtx.getImageData(0, 0, w, h);
+        applyBackgroundRemoval(imgData, state.bgColor, state.bgTolerance, state.bgMode);
+        outCtx.putImageData(imgData, 0, 0);
+      }
+
+      return outCanvas;
+    }
+
+    function applyBackgroundRemoval(imgData, targetRgb, tolerance, mode) {
+      const { width, height, data } = imgData;
+      const tolSq = (tolerance * 1.8) ** 2;
+
+      function colorDistSq(idx) {
+        const dr = data[idx] - targetRgb.r;
+        const dg = data[idx + 1] - targetRgb.g;
+        const db = data[idx + 2] - targetRgb.b;
+        return dr * dr + dg * dg + db * db;
+      }
+
+      if (mode === 'global') {
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] === 0) continue;
+          if (colorDistSq(i) <= tolSq) {
+            data[i + 3] = 0;
+          }
+        }
+      } else {
+        // BFS Flood fill from all outer edges
+        const visited = new Uint8Array(width * height);
+        const queue = new Int32Array(width * height);
+        let head = 0, tail = 0;
+
+        function tryEnqueue(x, y) {
+          const pos = y * width + x;
+          if (visited[pos]) return;
+          visited[pos] = 1;
+          const idx = pos * 4;
+          if (data[idx + 3] === 0 || colorDistSq(idx) <= tolSq) {
+            data[idx + 3] = 0;
+            queue[tail++] = pos;
+          }
+        }
+
+        for (let x = 0; x < width; x++) {
+          tryEnqueue(x, 0);
+          tryEnqueue(x, height - 1);
+        }
+        for (let y = 0; y < height; y++) {
+          tryEnqueue(0, y);
+          tryEnqueue(width - 1, y);
+        }
+
+        while (head < tail) {
+          const pos = queue[head++];
+          const x = pos % width;
+          const y = (pos - x) / width;
+
+          if (x > 0) tryEnqueue(x - 1, y);
+          if (x < width - 1) tryEnqueue(x + 1, y);
+          if (y > 0) tryEnqueue(x, y - 1);
+          if (y < height - 1) tryEnqueue(x, y + 1);
+        }
+      }
+    }
+
+    function renderStaticPreview() {
+      if (!state.staticImage) return;
+      const processed = processSourceToCanvas(state.staticImage, false);
+      el.previewCanvas.width = processed.width;
+      el.previewCanvas.height = processed.height;
+      ctx.clearRect(0, 0, processed.width, processed.height);
+      ctx.drawImage(processed, 0, 0);
+      updateEstimatedSize();
+    }
+
+    // GIF Playback Loop
+    function getPlaybackSequence() {
+      const enabledIndices = [];
+      state.gifFrames.forEach((f, idx) => {
+        if (f.enabled) enabledIndices.push(idx);
+      });
+      if (enabledIndices.length === 0) return [0];
+
+      if (state.gifDirection === 'reverse') {
+        return [...enabledIndices].reverse();
+      } else if (state.gifDirection === 'pingpong' && enabledIndices.length > 2) {
+        const rev = [...enabledIndices].slice(1, -1).reverse();
+        return [...enabledIndices, ...rev];
+      }
+      return enabledIndices;
+    }
+
+    function startGifPlayback() {
+      stopGifPlayback();
+      state.gifPlaying = true;
+      el.gifPlayIcon.textContent = '⏸';
+      el.gifPlayText.textContent = '暫停';
+      stepGifFrame();
+    }
+
+    function stopGifPlayback() {
+      state.gifPlaying = false;
+      if (state.gifTimer) {
+        clearTimeout(state.gifTimer);
+        state.gifTimer = null;
+      }
+      el.gifPlayIcon.textContent = '▶';
+      el.gifPlayText.textContent = '播放';
+    }
+
+    function stepGifFrame() {
+      if (!state.isGif || state.gifFrames.length === 0) return;
+      const seq = getPlaybackSequence();
+      const frameIdx = seq[state.gifCurrentIdx % seq.length];
+      const frameObj = state.gifFrames[frameIdx];
+
+      const processed = processSourceToCanvas(frameObj.imageData, true);
+      el.previewCanvas.width = processed.width;
+      el.previewCanvas.height = processed.height;
+      ctx.clearRect(0, 0, processed.width, processed.height);
+      ctx.drawImage(processed, 0, 0);
+
+      if (state.gifPlaying) {
+        const delay = Math.max(15, frameObj.delay / state.gifSpeed);
+        state.gifCurrentIdx = (state.gifCurrentIdx + 1) % seq.length;
+        state.gifTimer = setTimeout(stepGifFrame, delay);
+      }
+    }
+
+    // Interactive Controls Binding
+    el.widthInput.addEventListener('input', () => {
+      const val = parseInt(el.widthInput.value) || 1;
+      state.targetWidth = Math.min(4096, Math.max(1, val));
+      if (state.lockAspect && state.origWidth > 0) {
+        state.targetHeight = Math.max(1, Math.round(state.targetWidth * (state.origHeight / state.origWidth)));
+        el.heightInput.value = state.targetHeight;
+      }
+      triggerRefresh();
+    });
+
+    el.heightInput.addEventListener('input', () => {
+      const val = parseInt(el.heightInput.value) || 1;
+      state.targetHeight = Math.min(4096, Math.max(1, val));
+      if (state.lockAspect && state.origHeight > 0) {
+        state.targetWidth = Math.max(1, Math.round(state.targetHeight * (state.origWidth / state.origHeight)));
+        el.widthInput.value = state.targetWidth;
+      }
+      triggerRefresh();
+    });
+
+    el.lockAspectCheckbox.addEventListener('change', (e) => {
+      state.lockAspect = e.target.checked;
+    });
+
+    document.querySelectorAll('.scale-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const scale = parseFloat(btn.dataset.scale);
+        state.targetWidth = Math.max(1, Math.round(state.origWidth * scale));
+        state.targetHeight = Math.max(1, Math.round(state.origHeight * scale));
+        el.widthInput.value = state.targetWidth;
+        el.heightInput.value = state.targetHeight;
+        triggerRefresh();
+      });
+    });
+
+    el.pixelSizeRange.addEventListener('input', (e) => {
+      state.pixelSize = parseInt(e.target.value);
+      el.pixelSizeVal.textContent = state.pixelSize === 1 ? '1 px (原畫質)' : `${state.pixelSize} px`;
+      triggerRefresh();
+    });
+
+    // GIF Controls
+    el.gifSpeedRange.addEventListener('input', (e) => {
+      state.gifSpeed = parseFloat(e.target.value);
+      el.gifSpeedVal.textContent = `${state.gifSpeed.toFixed(2).replace(/\.00$/, '.0')}x`;
+    });
+
+    document.querySelectorAll('.speed-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.gifSpeed = parseFloat(btn.dataset.speed);
+        el.gifSpeedRange.value = state.gifSpeed;
+        el.gifSpeedVal.textContent = `${state.gifSpeed}x`;
+      });
+    });
+
+    el.gifDirectionSelect.addEventListener('change', (e) => {
+      state.gifDirection = e.target.value;
+      state.gifCurrentIdx = 0;
+    });
+
+    el.gifPlayPauseBtn.addEventListener('click', () => {
+      if (state.gifPlaying) {
+        stopGifPlayback();
+      } else {
+        startGifPlayback();
+      }
+    });
+
+    document.getElementById('gifDropHalfBtn').addEventListener('click', () => {
+      state.gifFrames.forEach((f, idx) => {
+        f.enabled = idx % 2 === 0;
+      });
+      buildGifTimelineUI();
+      updateEstimatedSize();
+    });
+
+    document.getElementById('gifSelectAllFramesBtn').addEventListener('click', () => {
+      state.gifFrames.forEach(f => f.enabled = true);
+      buildGifTimelineUI();
+      updateEstimatedSize();
+    });
+
+    // Background Removal Controls
+    el.bgRemoveEnable.addEventListener('change', (e) => {
+      state.bgRemove = e.target.checked;
+      if (state.bgRemove) {
+        el.bgRemoveControls.classList.remove('opacity-50', 'pointer-events-none');
+      } else {
+        el.bgRemoveControls.classList.add('opacity-50', 'pointer-events-none');
+      }
+      triggerRefresh();
+    });
+
+    el.bgTargetColor.addEventListener('input', (e) => {
+      state.bgColor = hexToRgb(e.target.value);
+      el.bgTargetHex.textContent = e.target.value.toUpperCase();
+      triggerRefresh();
+    });
+
+    el.bgModeSelect.addEventListener('change', (e) => {
+      state.bgMode = e.target.value;
+      triggerRefresh();
+    });
+
+    el.bgToleranceRange.addEventListener('input', (e) => {
+      state.bgTolerance = parseInt(e.target.value);
+      el.bgToleranceVal.textContent = state.bgTolerance;
+      triggerRefresh();
+    });
+
+    function autoDetectCornerColor() {
+      const temp = document.createElement('canvas');
+      temp.width = state.origWidth;
+      temp.height = state.origHeight;
+      const tCtx = temp.getContext('2d');
+      if (state.isGif && state.gifFrames[0]) {
+        tCtx.putImageData(state.gifFrames[0].imageData, 0, 0);
+      } else if (state.staticImage) {
+        tCtx.drawImage(state.staticImage, 0, 0);
+      } else {
+        return;
+      }
+      const p = tCtx.getImageData(0, 0, 1, 1).data;
+      state.bgColor = { r: p[0], g: p[1], b: p[2] };
+      const hex = rgbToHex(p[0], p[1], p[2]);
+      el.bgTargetColor.value = hex;
+      el.bgTargetHex.textContent = hex;
+    }
+
+    document.getElementById('autoDetectCornerBtn').addEventListener('click', () => {
+      autoDetectCornerColor();
+      triggerRefresh();
+    });
+
+    // Eyedropper click on canvas
+    el.previewCanvas.addEventListener('click', (e) => {
+      const rect = el.previewCanvas.getBoundingClientRect();
+      const x = Math.floor(((e.clientX - rect.left) / rect.width) * el.previewCanvas.width);
+      const y = Math.floor(((e.clientY - rect.top) / rect.height) * el.previewCanvas.height);
+
+      // Sample from original scaled source so we get true color before removal
+      const prevBgRemove = state.bgRemove;
+      state.bgRemove = false;
+      const cleanCanvas = state.isGif
+        ? processSourceToCanvas(state.gifFrames[0].imageData, true)
+        : processSourceToCanvas(state.staticImage, false);
+      state.bgRemove = prevBgRemove;
+
+      const pixel = cleanCanvas.getContext('2d').getImageData(x, y, 1, 1).data;
+      if (pixel[3] > 0) {
+        state.bgColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        el.bgTargetColor.value = hex;
+        el.bgTargetHex.textContent = hex;
+        if (!state.bgRemove) {
+          state.bgRemove = true;
+          el.bgRemoveEnable.checked = true;
+          el.bgRemoveControls.classList.remove('opacity-50', 'pointer-events-none');
+        }
+        triggerRefresh();
+      }
+    });
+
+    // Format & Compression
+    el.outputFormatSelect.addEventListener('change', (e) => {
+      state.outputFormat = e.target.value;
+      const lossy = state.outputFormat === 'image/jpeg' || state.outputFormat === 'image/webp';
+      el.qualitySliderBox.style.opacity = lossy ? '1' : '0.45';
+      updateEstimatedSize();
+    });
+
+    el.qualityRange.addEventListener('input', (e) => {
+      state.quality = parseInt(e.target.value) / 100;
+      el.qualityVal.textContent = `${e.target.value}%`;
+      updateEstimatedSize();
+    });
+
+    el.gifColorsSelect.addEventListener('change', (e) => {
+      state.gifColors = parseInt(e.target.value);
+      el.gifColorsVal.textContent = `${state.gifColors} 色`;
+      updateEstimatedSize();
+    });
+
+    // Compare & Reset
+    const compareBtn = document.getElementById('toggleCompareBtn');
+    compareBtn.addEventListener('mousedown', () => { state.showOriginal = true; triggerRefresh(); });
+    compareBtn.addEventListener('mouseup', () => { state.showOriginal = false; triggerRefresh(); });
+    compareBtn.addEventListener('mouseleave', () => { if (state.showOriginal) { state.showOriginal = false; triggerRefresh(); } });
+
+    document.getElementById('resetAllBtn').addEventListener('click', () => {
+      state.targetWidth = state.origWidth;
+      state.targetHeight = state.origHeight;
+      el.widthInput.value = state.origWidth;
+      el.heightInput.value = state.origHeight;
+      state.pixelSize = 1;
+      el.pixelSizeRange.value = 1;
+      el.pixelSizeVal.textContent = '1 px (原畫質)';
+      state.bgRemove = false;
+      el.bgRemoveEnable.checked = false;
+      el.bgRemoveControls.classList.add('opacity-50', 'pointer-events-none');
+      if (state.isGif) {
+        state.gifSpeed = 1.0;
+        el.gifSpeedRange.value = 1;
+        el.gifSpeedVal.textContent = '1.0x';
+        state.gifDirection = 'normal';
+        el.gifDirectionSelect.value = 'normal';
+        state.gifFrames.forEach(f => f.enabled = true);
+        buildGifTimelineUI();
+      }
+      triggerRefresh();
+    });
+
+    function triggerRefresh() {
+      if (state.isGif) {
+        if (!state.gifPlaying) stepGifFrame();
+        updateEstimatedSize();
+      } else {
+        renderStaticPreview();
+      }
+    }
+
+    function updateEstimatedSize() {
+      if (state.isGif) {
+        const activeFrames = state.gifFrames.filter(f => f.enabled).length;
+        const bitsPerPixel = Math.log2(state.gifColors);
+        const rawEstimate = (state.targetWidth * state.targetHeight * bitsPerPixel / 8) * activeFrames * 0.45;
+        el.estimatedSizeText.textContent = `約 ${formatBytes(Math.max(1024, rawEstimate))}`;
+        return;
+      }
+
+      if (!el.previewCanvas.width) return;
+      if (state.outputFormat === 'image/x-icon') {
+        const icoBytes = 22 + (Math.min(256, state.targetWidth) * Math.min(256, state.targetHeight) * 4);
+        el.estimatedSizeText.textContent = `約 ${formatBytes(icoBytes)}`;
+        return;
+      }
+      el.previewCanvas.toBlob((blob) => {
+        if (blob) {
+          el.estimatedSizeText.textContent = formatBytes(blob.size);
+        }
+      }, state.outputFormat, state.quality);
+    }
+
+    // Export & Download
+    el.exportBtn.addEventListener('click', async () => {
+      if (state.isGif) {
+        await exportAnimatedGif();
+      } else {
+        exportStaticImage();
+      }
+    });
+
+    function exportStaticImage() {
+      const processed = processSourceToCanvas(state.staticImage, false);
+      const extMap = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/webp': 'webp',
+        'image/bmp': 'bmp',
+        'image/x-icon': 'ico'
+      };
+      const ext = extMap[state.outputFormat] || 'png';
+
+      if (state.outputFormat === 'image/jpeg') {
+        // Fill white background for transparent areas in JPEG
+        const jpgCanvas = document.createElement('canvas');
+        jpgCanvas.width = processed.width;
+        jpgCanvas.height = processed.height;
+        const jCtx = jpgCanvas.getContext('2d');
+        jCtx.fillStyle = '#FFFFFF';
+        jCtx.fillRect(0, 0, jpgCanvas.width, jpgCanvas.height);
+        jCtx.drawImage(processed, 0, 0);
+        jpgCanvas.toBlob((blob) => triggerDownload(blob, `${state.fileName}_edited.${ext}`), 'image/jpeg', state.quality);
+      } else if (state.outputFormat === 'image/x-icon') {
+        // Generate valid PNG-in-ICO container (max 256x256)
+        const icoSize = Math.min(256, Math.max(processed.width, processed.height));
+        const icoCanvas = document.createElement('canvas');
+        icoCanvas.width = icoSize;
+        icoCanvas.height = icoSize;
+        icoCanvas.getContext('2d').drawImage(processed, 0, 0, icoSize, icoSize);
+        icoCanvas.toBlob(async (pngBlob) => {
+          const pngBuf = await pngBlob.arrayBuffer();
+          const icoBuf = new ArrayBuffer(22 + pngBuf.byteLength);
+          const view = new DataView(icoBuf);
+          view.setUint16(0, 0, true); // Reserved
+          view.setUint16(2, 1, true); // Type: 1 = ICO
+          view.setUint16(4, 1, true); // Count: 1 image
+          view.setUint8(6, icoSize === 256 ? 0 : icoSize);
+          view.setUint8(7, icoSize === 256 ? 0 : icoSize);
+          view.setUint8(8, 0);
+          view.setUint8(9, 0);
+          view.setUint16(10, 1, true);
+          view.setUint16(12, 32, true);
+          view.setUint32(14, pngBuf.byteLength, true);
+          view.setUint32(18, 22, true);
+          new Uint8Array(icoBuf, 22).set(new Uint8Array(pngBuf));
+          triggerDownload(new Blob([icoBuf], { type: 'image/x-icon' }), `${state.fileName}.ico`);
+        }, 'image/png');
+      } else {
+        processed.toBlob((blob) => triggerDownload(blob, `${state.fileName}_edited.${ext}`), state.outputFormat, state.quality);
+      }
+    }
+
+    async function exportAnimatedGif() {
+      el.loadingTitle.textContent = '正在編碼 GIF 動態圖...';
+      el.loadingDesc.textContent = '正在處理調色盤量化與透明通道，請稍候';
+      el.loadingModal.classList.remove('hidden');
+
+      await new Promise(r => setTimeout(r, 60));
+
+      try {
+        const w = state.targetWidth;
+        const h = state.targetHeight;
+        const seq = getPlaybackSequence();
+        const maxColors = state.gifColors;
+
+        // Allocate generous buffer for GIF encoding
+        const estBufferSize = Math.max(1024 * 1024, w * h * seq.length * 2);
+        const buf = new Uint8Array(estBufferSize);
+        const gifWriter = new GifWriter(buf, w, h, { loop: 0 });
+
+        for (let i = 0; i < seq.length; i++) {
+          const frameObj = state.gifFrames[seq[i]];
+          const canvas = processSourceToCanvas(frameObj.imageData, true);
+          const imgData = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+
+          const { palette, indexedPixels, transparentIndex } = quantizeFrameForGif(imgData, w * h, maxColors);
+          const delayCentisec = Math.max(2, Math.round((frameObj.delay / state.gifSpeed) / 10));
+
+          const opts = {
+            palette: palette,
+            delay: delayCentisec,
+            disposal: 2
+          };
+          if (transparentIndex !== null) {
+            opts.transparent = transparentIndex;
+          }
+
+          gifWriter.addFrame(0, 0, w, h, indexedPixels, opts);
+        }
+
+        const finalBytes = buf.subarray(0, gifWriter.end());
+        const blob = new Blob([finalBytes], { type: 'image/gif' });
+        triggerDownload(blob, `${state.fileName}_edited.gif`);
+      } catch (err) {
+        alert('GIF 編碼時發生錯誤，請嘗試縮小尺寸或減少幀數後再試一次。
+' + err.message);
+      } finally {
+        el.loadingModal.classList.add('hidden');
+      }
+    }
+
+    // Fast Color Quantizer with Transparency Support for omggif (power-of-2 palette size)
+    function quantizeFrameForGif(rgba, pixelCount, maxColors) {
+      const paletteSize = Math.pow(2, Math.ceil(Math.log2(Math.max(2, Math.min(256, maxColors)))));
+      const hasTransparency = (() => {
+        for (let i = 3; i < rgba.length; i += 4) {
+          if (rgba[i] < 128) return true;
+        }
+        return false;
+      })();
+
+      const usableColors = hasTransparency ? paletteSize - 1 : paletteSize;
+      const colorMap = new Map();
+
+      // Sample pixels to build frequency histogram (5-bit per channel)
+      const step = Math.max(1, Math.floor(pixelCount / 16000));
+      for (let p = 0; p < pixelCount; p += step) {
+        const idx = p * 4;
+        if (rgba[idx + 3] < 128) continue;
+        const r = rgba[idx] >> 3;
+        const g = rgba[idx + 1] >> 3;
+        const b = rgba[idx + 2] >> 3;
+        const key = (r << 10) | (g << 5) | b;
+        colorMap.set(key, (colorMap.get(key) || 0) + 1);
+      }
+
+      const sorted = Array.from(colorMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, usableColors);
+      const palette = [];
+      const lut = new Map();
+
+      sorted.forEach(([key], idx) => {
+        const r = ((key >> 10) & 31) << 3;
+        const g = ((key >> 5) & 31) << 3;
+        const b = (key & 31) << 3;
+        palette.push((r << 16) | (g << 8) | b);
+        lut.set(key, idx);
+      });
+
+      while (palette.length < usableColors) {
+        palette.push(0x000000);
+      }
+
+      let transparentIndex = null;
+      if (hasTransparency) {
+        transparentIndex = palette.length;
+        palette.push(0x000000);
+      }
+
+      const indexedPixels = new Uint8Array(pixelCount);
+      for (let p = 0; p < pixelCount; p++) {
+        const idx = p * 4;
+        if (rgba[idx + 3] < 128) {
+          indexedPixels[p] = transparentIndex;
+          continue;
+        }
+        const r = rgba[idx];
+        const g = rgba[idx + 1];
+        const b = rgba[idx + 2];
+        const key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+
+        if (lut.has(key)) {
+          indexedPixels[p] = lut.get(key);
+        } else {
+          // Nearest neighbor search in palette
+          let bestIdx = 0;
+          let bestDist = Infinity;
+          for (let c = 0; c < usableColors; c++) {
+            const hex = palette[c];
+            const dr = r - ((hex >> 16) & 255);
+            const dg = g - ((hex >> 8) & 255);
+            const db = b - (hex & 255);
+            const dist = dr * dr + dg * dg + db * db;
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestIdx = c;
+            }
+          }
+          lut.set(key, bestIdx);
+          indexedPixels[p] = bestIdx;
+        }
+      }
+
+      return { palette, indexedPixels, transparentIndex };
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+  </script>
+</body>
+</html>
